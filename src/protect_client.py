@@ -1,22 +1,22 @@
 """
-UniFi Protect API client.
+UniFi Protect API client — routed through the UniFi Site Manager cloud API.
 
-Handles authentication, event polling, and thumbnail downloads.
-The Protect API uses cookie-based auth (TOKEN cookie) obtained by POSTing
-credentials to /api/auth/login on the controller.
+All requests go to api.ui.com using the X-API-KEY header.  On first use,
+the client discovers the console host ID automatically; set PROTECT_HOST_ID
+in .env to pin a specific console when you have more than one.
 """
 
 from __future__ import annotations
 
 import base64
 import logging
-import time
 from dataclasses import dataclass, field
-from typing import Any
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+CLOUD_BASE = "https://api.ui.com"
 
 # Protect event types we care about
 INTERESTING_TYPES = {"motion", "ring", "smartDetectZone", "smartDetectLine"}
@@ -45,26 +45,50 @@ class ProtectEvent:
 
 
 class ProtectClient:
-    """Async client for the UniFi Protect local API."""
+    """Async client for UniFi Protect, proxied through the Site Manager cloud API."""
 
-    def __init__(self, host: str, api_key: str) -> None:
-        self._host = host.rstrip("/")
-        # SSL verification is disabled because home controllers use self-signed certs.
+    def __init__(self, api_key: str, host_id: str | None = None) -> None:
+        self._host_id = host_id
         self._http = httpx.AsyncClient(
-            base_url=f"https://{self._host}",
+            base_url=CLOUD_BASE,
             headers={"X-API-KEY": api_key},
-            verify=False,
-            timeout=30,
+            timeout=60,  # cloud proxy adds ~800 ms latency
             follow_redirects=True,
         )
         self._cameras: dict[str, str] = {}  # id -> display name
+
+    # ------------------------------------------------------------------
+    # Host discovery
+    # ------------------------------------------------------------------
+
+    async def _resolve_host_id(self) -> None:
+        """Auto-discover the console host ID from GET /v1/hosts."""
+        resp = await self._http.get("/v1/hosts")
+        resp.raise_for_status()
+        hosts = resp.json().get("data", resp.json())  # handle both envelope shapes
+        if not hosts:
+            raise RuntimeError("No UniFi consoles found under this API key.")
+        if len(hosts) > 1:
+            ids = [h["id"] for h in hosts]
+            raise RuntimeError(
+                f"Multiple consoles found: {ids}\n"
+                "Set PROTECT_HOST_ID in .env to choose one."
+            )
+        self._host_id = hosts[0]["id"]
+        logger.info("Auto-discovered console host ID: %s", self._host_id)
+
+    def _protect(self, path: str) -> str:
+        """Build the cloud proxy path for a Protect API endpoint."""
+        return f"/v1/connector/consoles/{self._host_id}/proxy/protect/api{path}"
 
     # ------------------------------------------------------------------
     # Bootstrap — load camera names once
     # ------------------------------------------------------------------
 
     async def load_cameras(self) -> None:
-        resp = await self._http.get("/proxy/protect/api/bootstrap")
+        if not self._host_id:
+            await self._resolve_host_id()
+        resp = await self._http.get(self._protect("/bootstrap"))
         resp.raise_for_status()
         data = resp.json()
         self._cameras = {
@@ -80,7 +104,7 @@ class ProtectClient:
     async def fetch_events(self, since_ms: int, until_ms: int) -> list[ProtectEvent]:
         """Return completed events whose start time falls in [since_ms, until_ms)."""
         resp = await self._http.get(
-            "/proxy/protect/api/events",
+            self._protect("/events"),
             params={"start": since_ms, "end": until_ms},
         )
         resp.raise_for_status()
@@ -115,7 +139,7 @@ class ProtectClient:
         """Return a base64-encoded JPEG thumbnail, or None on failure."""
         try:
             resp = await self._http.get(
-                f"/proxy/protect/api/events/{event_id}/thumbnail",
+                self._protect(f"/events/{event_id}/thumbnail"),
                 params={"width": 640},
             )
             if resp.status_code == 404:

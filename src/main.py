@@ -1,11 +1,11 @@
 """
 UniFi Protect + Claude event summarizer.
 
-Polls the Protect controller for new camera events on a configurable interval,
+Polls camera events via the UniFi Site Manager cloud API (api.ui.com),
 downloads thumbnails, and uses Claude to generate plain-English summaries.
 
 Usage:
-    cp .env.example .env          # fill in your credentials
+    cp .env.example .env          # fill in PROTECT_API_KEY and ANTHROPIC_API_KEY
     pip install -r requirements.txt
     python -m src.main
 """
@@ -39,11 +39,11 @@ def _require(name: str) -> str:
 
 
 async def run() -> None:
-    host = _require("PROTECT_HOST")
     api_key = _require("PROTECT_API_KEY")
+    host_id = os.getenv("PROTECT_HOST_ID") or None  # optional; auto-discovered if absent
     poll_interval = int(os.getenv("POLL_INTERVAL", "30"))
 
-    protect = ProtectClient(host, api_key)
+    protect = ProtectClient(api_key, host_id)
     summarizer = ClaudeSummarizer()
 
     try:
