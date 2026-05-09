@@ -47,43 +47,23 @@ class ProtectEvent:
 class ProtectClient:
     """Async client for the UniFi Protect local API."""
 
-    def __init__(self, host: str, username: str, password: str) -> None:
+    def __init__(self, host: str, api_key: str) -> None:
         self._host = host.rstrip("/")
-        self._username = username
-        self._password = password
         # SSL verification is disabled because home controllers use self-signed certs.
         self._http = httpx.AsyncClient(
             base_url=f"https://{self._host}",
+            headers={"X-API-KEY": api_key},
             verify=False,
             timeout=30,
             follow_redirects=True,
         )
         self._cameras: dict[str, str] = {}  # id -> display name
-        self._authenticated = False
-
-    # ------------------------------------------------------------------
-    # Auth
-    # ------------------------------------------------------------------
-
-    async def login(self) -> None:
-        resp = await self._http.post(
-            "/api/auth/login",
-            json={"username": self._username, "password": self._password},
-        )
-        resp.raise_for_status()
-        self._authenticated = True
-        logger.info("Logged in to Protect at %s", self._host)
-
-    async def _ensure_auth(self) -> None:
-        if not self._authenticated:
-            await self.login()
 
     # ------------------------------------------------------------------
     # Bootstrap — load camera names once
     # ------------------------------------------------------------------
 
     async def load_cameras(self) -> None:
-        await self._ensure_auth()
         resp = await self._http.get("/proxy/protect/api/bootstrap")
         resp.raise_for_status()
         data = resp.json()
@@ -99,7 +79,6 @@ class ProtectClient:
 
     async def fetch_events(self, since_ms: int, until_ms: int) -> list[ProtectEvent]:
         """Return completed events whose start time falls in [since_ms, until_ms)."""
-        await self._ensure_auth()
         resp = await self._http.get(
             "/proxy/protect/api/events",
             params={"start": since_ms, "end": until_ms},
@@ -134,7 +113,6 @@ class ProtectClient:
 
     async def fetch_thumbnail_b64(self, event_id: str) -> str | None:
         """Return a base64-encoded JPEG thumbnail, or None on failure."""
-        await self._ensure_auth()
         try:
             resp = await self._http.get(
                 f"/proxy/protect/api/events/{event_id}/thumbnail",

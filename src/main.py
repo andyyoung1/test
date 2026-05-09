@@ -40,15 +40,13 @@ def _require(name: str) -> str:
 
 async def run() -> None:
     host = _require("PROTECT_HOST")
-    username = _require("PROTECT_USERNAME")
-    password = _require("PROTECT_PASSWORD")
+    api_key = _require("PROTECT_API_KEY")
     poll_interval = int(os.getenv("POLL_INTERVAL", "30"))
 
-    protect = ProtectClient(host, username, password)
+    protect = ProtectClient(host, api_key)
     summarizer = ClaudeSummarizer()
 
     try:
-        await protect.login()
         await protect.load_cameras()
 
         # Start polling from now; on the first tick we look back one interval
