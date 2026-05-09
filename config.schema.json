@@ -1,0 +1,46 @@
+{
+  "pluginAlias": "UnifiProtectClaude",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "UniFi Protect Claude"
+      },
+      "apiKey": {
+        "title": "UniFi API Key",
+        "type": "string",
+        "required": true,
+        "description": "Generate at https://unifi.ui.com → API Keys"
+      },
+      "anthropicApiKey": {
+        "title": "Anthropic API Key",
+        "type": "string",
+        "required": true,
+        "description": "Get from https://console.anthropic.com/settings/api-keys"
+      },
+      "hostId": {
+        "title": "Console Host ID",
+        "type": "string",
+        "description": "Leave blank to auto-discover. Required only if you have multiple UniFi consoles."
+      },
+      "pollInterval": {
+        "title": "Poll Interval (seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 5
+      },
+      "motionDuration": {
+        "title": "Motion Active Duration (seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 5,
+        "description": "How long to keep the motion sensor active after an event"
+      }
+    },
+    "required": ["apiKey", "anthropicApiKey"]
+  }
+}
