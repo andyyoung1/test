@@ -1,8 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import type { Summarizer } from './summarizer.js';
 import type { ProtectEvent } from './protectClient.js';
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'gpt-4o';
 
 const SYSTEM_PROMPT = `You are a home-security assistant that summarises camera events from a UniFi Protect system.
 
@@ -24,34 +24,33 @@ function eventText(event: ProtectEvent): string {
   return lines.join('\n');
 }
 
-export class ClaudeSummarizer implements Summarizer {
-  private readonly client: Anthropic;
+export class OpenAISummarizer implements Summarizer {
+  private readonly client: OpenAI;
 
   constructor(apiKey: string) {
-    this.client = new Anthropic({ apiKey });
+    this.client = new OpenAI({ apiKey });
   }
 
   async summarise(event: ProtectEvent): Promise<string> {
-    const content: Anthropic.MessageParam['content'] = [];
+    const userContent: OpenAI.ChatCompletionContentPart[] = [];
 
     if (event.thumbnailB64) {
-      content.push({
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: event.thumbnailB64 },
+      userContent.push({
+        type: 'image_url',
+        image_url: { url: `data:image/jpeg;base64,${event.thumbnailB64}`, detail: 'low' },
       });
     }
-    content.push({ type: 'text', text: eventText(event) });
+    userContent.push({ type: 'text', text: eventText(event) });
 
-    const response = await this.client.messages.create({
+    const response = await this.client.chat.completions.create({
       model: MODEL,
       max_tokens: 256,
-      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content }],
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userContent },
+      ],
     });
 
-    return response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
+    return response.choices[0]?.message.content ?? '';
   }
 }

@@ -11,6 +11,8 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 import { CameraAccessory } from './cameraAccessory.js';
 import { ProtectClient } from './protectClient.js';
 import { ClaudeSummarizer } from './claudeSummarizer.js';
+import { OpenAISummarizer } from './openaiSummarizer.js';
+import type { Summarizer } from './summarizer.js';
 
 export class UnifiProtectClaudePlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
@@ -39,7 +41,20 @@ export class UnifiProtectClaudePlatform implements DynamicPlatformPlugin {
       (this.config['hostId'] as string) || undefined,
       this.log,
     );
-    const summarizer = new ClaudeSummarizer(this.config['anthropicApiKey'] as string);
+
+    const provider = (this.config['summaryProvider'] as string) ?? 'claude';
+    let summarizer: Summarizer;
+    if (provider === 'openai') {
+      const key = this.config['openaiApiKey'] as string;
+      if (!key) throw new Error('openaiApiKey is required when summaryProvider is "openai"');
+      summarizer = new OpenAISummarizer(key);
+      this.log.info('Using OpenAI (gpt-4o) for summaries');
+    } else {
+      const key = this.config['anthropicApiKey'] as string;
+      if (!key) throw new Error('anthropicApiKey is required when summaryProvider is "claude"');
+      summarizer = new ClaudeSummarizer(key);
+      this.log.info('Using Claude (claude-sonnet-4-6) for summaries');
+    }
     const pollInterval: number = (this.config['pollInterval'] as number) ?? 30;
     const motionDuration: number = (this.config['motionDuration'] as number) ?? 30;
 

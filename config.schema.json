@@ -16,11 +16,24 @@
         "required": true,
         "description": "Generate at https://unifi.ui.com → API Keys"
       },
+      "summaryProvider": {
+        "title": "Summary Provider",
+        "type": "string",
+        "default": "claude",
+        "oneOf": [
+          {"title": "Claude (Anthropic)", "enum": ["claude"]},
+          {"title": "ChatGPT (OpenAI)", "enum": ["openai"]}
+        ]
+      },
       "anthropicApiKey": {
         "title": "Anthropic API Key",
         "type": "string",
-        "required": true,
-        "description": "Get from https://console.anthropic.com/settings/api-keys"
+        "description": "Required when Summary Provider is Claude. Get from https://console.anthropic.com/settings/api-keys"
+      },
+      "openaiApiKey": {
+        "title": "OpenAI API Key",
+        "type": "string",
+        "description": "Required when Summary Provider is ChatGPT. Get from https://platform.openai.com/api-keys"
       },
       "hostId": {
         "title": "Console Host ID",
