@@ -1,28 +1,26 @@
 {
-  "name": "homebridge-unifi-protect-claude",
-  "version": "0.1.0",
-  "description": "UniFi Protect motion sensors with Claude AI summaries for Homebridge",
-  "main": "dist/index.js",
+  "name": "unifi-status-mcpb",
+  "version": "0.3.3",
+  "description": "MCP bundle for UniFi cloud + local Network + local Protect APIs",
+  "type": "module",
+  "main": "server/index.js",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch",
-    "prepublishOnly": "npm run build"
-  },
-  "keywords": ["homebridge-plugin"],
-  "engines": {
-    "node": ">=18.0.0",
-    "homebridge": ">=1.6.0"
+    "smoke-test": "node --import tsx src/smoke-test.ts",
+    "pack": "npm run build && mcpb pack",
+    "clean": "rm -rf server node_modules"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.40.0",
-    "openai": "^4.0.0"
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "undici": "^6.20.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "homebridge": "^1.8.0",
-    "typescript": "^5.0.0"
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
   },
-  "peerDependencies": {
-    "homebridge": ">=1.6.0"
+  "engines": {
+    "node": ">=18"
   }
 }

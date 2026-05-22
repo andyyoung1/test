@@ -1,0 +1,71 @@
+{
+  "manifest_version": "0.3",
+  "name": "unifi-status",
+  "display_name": "UniFi Status",
+  "version": "0.3.3",
+  "description": "Camera, device, network, and Protect status across UniFi consoles \u2014 cloud + local APIs.",
+  "long_description": "Connects Claude to three UniFi API surfaces:\n\n- **Site Manager API** (cloud, api.ui.com) \u2014 device inventory and online/offline state from anywhere.\n- **Network Integration API** (local, on each UDM) \u2014 sites, devices, clients, AP/switch/gateway roles.\n- **Protect Integration API** (local, on each UDM) \u2014 NVR health, recording mode, motion and smart-detect events, snapshots.\n\nThe local APIs share one API key per UDM (generate at Settings \u2192 Control Plane \u2192 Integrations). Tools automatically prefer local data when reachable and fall back to cloud when not. Each result reports which transport answered.\n\n**Tool surface**\n\nCloud:\n- `list_hosts`, `list_sites`, `list_devices`, `camera_status`\n\nLocal Network:\n- `network_status` \u2014 sites/devices/clients/AP-radios\n\nLocal Protect:\n- `protect_overview` \u2014 NVR + camera fleet summary\n- `protect_cameras` \u2014 per-camera recording mode, smart-detect config, last motion\n- `recent_motion_events` \u2014 motion events with camera names\n- `recent_smart_detects` \u2014 person/vehicle/package/animal/license-plate events\n- `camera_snapshot` \u2014 current still image (inline JPEG)\n\nDiagnostic:\n- `transport_status` \u2014 which transports are reachable on each console right now",
+  "author": { "name": "Andy" },
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "UNIFI_API_KEY": "${user_config.unifi_api_key}",
+        "UNIFI_LOCAL_CONSOLES": "${user_config.local_consoles_json}",
+        "UNIFI_LOCAL_TLS_INSECURE": "${user_config.allow_self_signed}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "list_hosts", "description": "List all UniFi consoles on the account (cloud)." },
+    { "name": "list_sites", "description": "List all UniFi sites across all hosts (cloud)." },
+    { "name": "list_devices", "description": "List UniFi devices, optionally cameras only (cloud)." },
+    { "name": "camera_status", "description": "Camera status summary \u2014 totals, offline list, pending firmware updates (cloud)." },
+    { "name": "network_status", "description": "Rich network status from local Network Integration API (sites, devices, clients, signal-strength distribution, clients-per-AP)." },
+    { "name": "network_info", "description": "Network Controller version + Integration API endpoint-capability probe." },
+    { "name": "device_detail", "description": "Full per-device JSON from local Network API \u2014 ports, radios, WAN config, statistics." },
+    { "name": "client_detail", "description": "Per-client list with signal strength, AP attachment, link rate. Ranks weakest signal first." },
+    { "name": "protect_overview", "description": "Protect NVR + camera fleet overview (local Protect API)." },
+    { "name": "protect_cameras", "description": "Per-camera detail: recording mode, smart-detect config, last motion (local Protect API)." },
+    { "name": "recent_motion_events", "description": "Recent motion events with camera names resolved (local Protect API)." },
+    { "name": "recent_smart_detects", "description": "Recent person/vehicle/package/animal/license-plate events (local Protect API)." },
+    { "name": "camera_snapshot", "description": "Capture a current snapshot from a Protect camera, returned inline as JPEG (local Protect API)." },
+    { "name": "transport_status", "description": "Diagnostic: cloud + Network + Protect reachability for each console. Records latency to history log." },
+    { "name": "latency_trend", "description": "Read historical latency measurements and report percentiles, trend direction, sparkline." }
+  ],
+  "keywords": ["unifi", "ubiquiti", "protect", "cameras", "network", "monitoring", "snapshots", "motion-detection"],
+  "license": "MIT",
+  "user_config": {
+    "unifi_api_key": {
+      "type": "string",
+      "title": "Site Manager API Key (cloud)",
+      "description": "Generate at https://unifi.ui.com \u2192 API. Required. Stored securely in your OS keychain.",
+      "sensitive": true,
+      "required": true
+    },
+    "local_consoles_json": {
+      "type": "string",
+      "title": "Local consoles (optional JSON)",
+      "description": "JSON array describing your local UDMs for Network + Protect data. ONE API key per UDM grants access to both Network and Protect surfaces. Example:\n[\n  {\"hostId\":\"6C63...\",\"name\":\"Udm-Pro-Urb\",\"url\":\"https://192.168.3.1\",\"apiKey\":\"YOUR_LOCAL_KEY\"},\n  {\"hostId\":\"245A...\",\"name\":\"UDM-Pro\",\"url\":\"https://192.168.1.1\",\"apiKey\":\"YOUR_LOCAL_KEY\"}\n]\nGet hostId from `list_hosts`. Generate each apiKey on its UDM at Settings \u2192 Control Plane \u2192 Integrations. Leave blank to use cloud only.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "allow_self_signed": {
+      "type": "string",
+      "title": "Allow self-signed certs on local consoles",
+      "description": "Set to 'true' to accept UniFi's default self-signed HTTPS cert. Required unless you've installed a real cert on your UDM.",
+      "required": false,
+      "default": "true"
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=18.0.0" }
+  }
+}
