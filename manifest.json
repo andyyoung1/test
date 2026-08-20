@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "unifi-status",
   "display_name": "UniFi Status",
-  "version": "0.3.3",
-  "description": "Camera, device, network, and Protect status across UniFi consoles \u2014 cloud + local APIs.",
-  "long_description": "Connects Claude to three UniFi API surfaces:\n\n- **Site Manager API** (cloud, api.ui.com) \u2014 device inventory and online/offline state from anywhere.\n- **Network Integration API** (local, on each UDM) \u2014 sites, devices, clients, AP/switch/gateway roles.\n- **Protect Integration API** (local, on each UDM) \u2014 NVR health, recording mode, motion and smart-detect events, snapshots.\n\nThe local APIs share one API key per UDM (generate at Settings \u2192 Control Plane \u2192 Integrations). Tools automatically prefer local data when reachable and fall back to cloud when not. Each result reports which transport answered.\n\n**Tool surface**\n\nCloud:\n- `list_hosts`, `list_sites`, `list_devices`, `camera_status`\n\nLocal Network:\n- `network_status` \u2014 sites/devices/clients/AP-radios\n\nLocal Protect:\n- `protect_overview` \u2014 NVR + camera fleet summary\n- `protect_cameras` \u2014 per-camera recording mode, smart-detect config, last motion\n- `recent_motion_events` \u2014 motion events with camera names\n- `recent_smart_detects` \u2014 person/vehicle/package/animal/license-plate events\n- `camera_snapshot` \u2014 current still image (inline JPEG)\n\nDiagnostic:\n- `transport_status` \u2014 which transports are reachable on each console right now",
+  "version": "0.3.4",
+  "description": "Camera, device, network, Protect, and QuantumFiber ISP status \u2014 cloud + local APIs.",
+  "long_description": "Connects Claude to three UniFi API surfaces plus the QuantumFiber customer portal:\n\n- **Site Manager API** (cloud, api.ui.com) \u2014 device inventory and online/offline state from anywhere.\n- **Network Integration API** (local, on each UDM) \u2014 sites, devices, clients, AP/switch/gateway roles.\n- **Protect Integration API** (local, on each UDM) \u2014 NVR health, recording mode, motion and smart-detect events, snapshots.\n- **QuantumFiber portal** \u2014 current internet plan tier and available upgrades.\n\nThe local APIs share one API key per UDM (generate at Settings \u2192 Control Plane \u2192 Integrations). Tools automatically prefer local data when reachable and fall back to cloud when not. Each result reports which transport answered.\n\n**Tool surface**\n\nCloud:\n- `list_hosts`, `list_sites`, `list_devices`, `camera_status`\n\nLocal Network:\n- `network_status` \u2014 sites/devices/clients/AP-radios\n\nLocal Protect:\n- `protect_overview` \u2014 NVR + camera fleet summary\n- `protect_cameras` \u2014 per-camera recording mode, smart-detect config, last motion\n- `recent_motion_events` \u2014 motion events with camera names\n- `recent_smart_detects` \u2014 person/vehicle/package/animal/license-plate events\n- `camera_snapshot` \u2014 current still image (inline JPEG)\n\nQuantumFiber ISP:\n- `quantum_plan_status` \u2014 active fiber plan and available upgrade tier\n\nDiagnostic:\n- `transport_status` \u2014 which transports are reachable on each console right now",
   "author": { "name": "Andy" },
   "icon": "icon.png",
   "server": {
@@ -16,7 +16,9 @@
       "env": {
         "UNIFI_API_KEY": "${user_config.unifi_api_key}",
         "UNIFI_LOCAL_CONSOLES": "${user_config.local_consoles_json}",
-        "UNIFI_LOCAL_TLS_INSECURE": "${user_config.allow_self_signed}"
+        "UNIFI_LOCAL_TLS_INSECURE": "${user_config.allow_self_signed}",
+        "QUANTUM_FIBER_USERNAME": "${user_config.quantum_fiber_username}",
+        "QUANTUM_FIBER_PASSWORD": "${user_config.quantum_fiber_password}"
       }
     }
   },
@@ -34,6 +36,7 @@
     { "name": "recent_motion_events", "description": "Recent motion events with camera names resolved (local Protect API)." },
     { "name": "recent_smart_detects", "description": "Recent person/vehicle/package/animal/license-plate events (local Protect API)." },
     { "name": "camera_snapshot", "description": "Capture a current snapshot from a Protect camera, returned inline as JPEG (local Protect API)." },
+    { "name": "quantum_plan_status", "description": "Current QuantumFiber internet plan and available upgrade tier (QuantumFiber customer portal)." },
     { "name": "transport_status", "description": "Diagnostic: cloud + Network + Protect reachability for each console. Records latency to history log." },
     { "name": "latency_trend", "description": "Read historical latency measurements and report percentiles, trend direction, sparkline." }
   ],
@@ -61,6 +64,22 @@
       "description": "Set to 'true' to accept UniFi's default self-signed HTTPS cert. Required unless you've installed a real cert on your UDM.",
       "required": false,
       "default": "true"
+    },
+    "quantum_fiber_username": {
+      "type": "string",
+      "title": "QuantumFiber username (email)",
+      "description": "Your QuantumFiber portal login email (login.quantumfiber.com). Optional — leave blank to skip ISP plan tools.",
+      "sensitive": false,
+      "required": false,
+      "default": ""
+    },
+    "quantum_fiber_password": {
+      "type": "string",
+      "title": "QuantumFiber password",
+      "description": "Your QuantumFiber portal password. Stored securely in your OS keychain.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
     }
   },
   "compatibility": {

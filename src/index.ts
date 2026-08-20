@@ -1,5 +1,5 @@
 /**
- * UniFi Status MCP server v0.3 — cloud + local Network + local Protect.
+ * UniFi Status MCP server v0.3 — cloud + local Network + local Protect + QuantumFiber ISP.
  *
  * stdio transport. NEVER write to stdout — use console.error / stderr only,
  * or JSON-RPC framing breaks.
@@ -19,6 +19,7 @@ import {
 import { UnifiLocalAPIError, type LocalDevice } from "./local/client.js";
 import { summarizeSite } from "./local/summarize.js";
 import { UnifiProtectAPIError } from "./protect/client.js";
+import { QuantumFiberAPIError, QuantumFiberClient } from "./quantum/client.js";
 import {
   appendRecords,
   computeStats,
@@ -62,6 +63,15 @@ function cloudClient(): UnifiClient {
   return _cloudClient;
 }
 
+let _quantumClient: QuantumFiberClient | undefined;
+function quantumClient(): QuantumFiberClient | null {
+  const username = process.env.QUANTUM_FIBER_USERNAME;
+  const password = process.env.QUANTUM_FIBER_PASSWORD;
+  if (!username || !password) return null;
+  if (!_quantumClient) _quantumClient = new QuantumFiberClient({ username, password });
+  return _quantumClient;
+}
+
 function ok(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
 }
@@ -70,7 +80,8 @@ function toolError(label: string, err: unknown) {
   const msg =
     err instanceof UnifiAPIError ||
     err instanceof UnifiLocalAPIError ||
-    err instanceof UnifiProtectAPIError
+    err instanceof UnifiProtectAPIError ||
+    err instanceof QuantumFiberAPIError
       ? err.message
       : err instanceof Error
         ? err.message
@@ -709,6 +720,37 @@ server.registerTool(
       };
     } catch (err) {
       return toolError("camera_snapshot", err);
+    }
+  },
+);
+
+// ============== QUANTUM FIBER ISP ==============
+
+server.registerTool(
+  "quantum_plan_status",
+  {
+    title: "QuantumFiber Plan Status",
+    description:
+      "Current internet plan and available upgrades from the QuantumFiber customer portal. " +
+      "Returns product name, active plan speed and tier, and any upgrade tier available. " +
+      "Requires QUANTUM_FIBER_USERNAME and QUANTUM_FIBER_PASSWORD environment variables.",
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      const client = quantumClient();
+      if (!client) {
+        return toolError(
+          "quantum_plan_status",
+          new Error(
+            "QuantumFiber credentials not configured. Set QUANTUM_FIBER_USERNAME and QUANTUM_FIBER_PASSWORD.",
+          ),
+        );
+      }
+      const plan = await client.getPlanStatus();
+      return ok({ transport: "quantum-fiber", ...plan });
+    } catch (err) {
+      return toolError("quantum_plan_status", err);
     }
   },
 );

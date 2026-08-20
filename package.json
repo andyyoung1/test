@@ -1,6 +1,6 @@
 {
   "name": "unifi-status-mcpb",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "MCP bundle for UniFi cloud + local Network + local Protect APIs",
   "type": "module",
   "main": "server/index.js",
